@@ -1,0 +1,71 @@
+name: Build new image
+on: [push]
+
+env:
+  DOCKER_IMAGE: my_alpine
+
+jobs:
+  build_image:
+    name: Build docker image
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v3
+
+    - name: Read release.json
+      uses: notiz-dev/github-action-json-property@release
+      id: version_info
+      with:
+        path: 'release.json'
+        prop_path: 'version'
+
+    - name: Show version number
+      run: echo "Version is ${{ steps.version_info.outputs.prop }}"
+
+    - name: Login to DockerHub
+      if: !contains(${{ steps.version_info.outputs.prop }}, '_RC')
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_PASS }}
+
+    - name: Build, tag, and push image to Dockerhub
+      if: !contains(${{ steps.version_info.outputs.prop }}, '_RC')
+      env:
+        docker_user: osmollo
+        docker_image: $DOCKER_IMAGE
+        docker_version: ${{ steps.version_info.outputs.prop }}
+      run: |
+        docker build -t $docker_user/$docker_image:$docker_version .
+        docker push $docker_user/$docker_image:$docker_version
+        docker tag $docker_user/$docker_image:$docker_version $docker_user/$docker_image:latest
+        docker push $docker_user/$docker_image:latest
+
+    - name: Login to registry.osmollo.ovh
+      if: contains(${{ steps.version_info.outputs.prop }}, '_RC')
+      uses: docker/login-action@v3
+      with:
+        registry: registry.osmollo.ovh
+        username: ${{ secrets.REGISTRY_USER }}
+        password: ${{ secrets.REGISTRY_PASS }}
+
+    - name: Build, tag, and push image to registry.osmollo.ovh
+      if: contains(${{ steps.version_info.outputs.prop }}, '_RC')
+      env:
+        docker_user: osmollo
+        docker_image: $DOCKER_IMAGE
+        docker_version: ${{ steps.version_info.outputs.prop }}
+      run: |
+        docker build -t registry.osmollo.ovh/$docker_user/$docker_image:$docker_version .
+        docker push $docker_user/$docker_image:$docker_version
+        docker tag $docker_user/$docker_image:$docker_version $docker_user/$docker_image:latest
+        docker push $docker_user/$docker_image:latest
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      with:
+        tag_name: "${{ steps.version_info.outputs.prop }}"
+        release_name: Release v${{ steps.version_info.outputs.prop }}
