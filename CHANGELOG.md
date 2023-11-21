@@ -13,3 +13,6 @@
     - Curl/Wget
     - JQ
     - less
+    - pip y virtualenv
+- Github Actions para generar imágenes de Docker estables o RCs
+- [README.md](./README.md)
