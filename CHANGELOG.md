@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 1.1
+
+- Imagen base: alpine 3.21
+
 ## 1.0
 
 - Imagen base: alpine 3.18.4
